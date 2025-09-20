@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Detección de Baches - YOLOv8</title>
+    <title>Sistema de Detección de Baches | YOLOv8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -14,691 +14,765 @@
             transition: all 0.3s;
         }
         .file-input-label:hover {
-            border-color: #4f46e5;
+            border-color: #3b82f6;
             background-color: #f8fafc;
         }
-        .file-input-label.drag-over {
-            border-color: #4f46e5;
-            background-color: #e0e7ff;
+        .file-input-label.dragover {
+            border-color: #3b82f6;
+            background-color: #ebf5ff;
         }
-        .result-card {
-            transition: transform 0.3s, box-shadow 0.3s;
+        .detection-box {
+            position: absolute;
+            border: 2px solid #ef4444;
+            background-color: rgba(239, 68, 68, 0.2);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
         }
-        .result-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        .detection-label {
+            background-color: #ef4444;
+            color: white;
+            padding: 2px 5px;
+            font-size: 12px;
+            border-radius: 3px;
+            margin-bottom: 2px;
         }
-        .pothole-small {
-            border-color: #10b981;
-        }
-        .pothole-medium {
-            border-color: #f59e0b;
-        }
-        .pothole-large {
-            border-color: #ef4444;
+        .image-container {
+            position: relative;
+            display: inline-block;
         }
         .progress-bar {
-            height: 6px;
-            transition: width 0.3s;
+            transition: width 0.3s ease;
         }
-        .tab-content {
-            display: none;
-        }
-        .tab-content.active {
-            display: block;
-            animation: fadeIn 0.5s;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        #imagePreviewContainer img {
-            max-height: 300px;
-            object-fit: contain;
+        @media (max-width: 640px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
-<body class="bg-gray-50 font-sans">
-    <div class="container mx-auto px-4 py-8 max-w-7xl">
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
         <!-- Header -->
-        <header class="mb-10 text-center">
-            <h1 class="text-3xl md:text-4xl font-bold text-indigo-800 mb-2">
-                <i class="fas fa-road mr-2"></i>Sistema de Detección de Baches
-            </h1>
-            <p class="text-lg text-gray-600">Utilizando visión por computadora con YOLOv8 para el análisis de pavimentos</p>
-            <div class="w-full bg-indigo-100 h-1 mt-4 rounded-full"></div>
+        <header class="mb-8">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <div class="bg-blue-600 text-white p-3 rounded-lg mr-4">
+                        <i class="fas fa-road text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-800">Sistema de Detección de Baches</h1>
+                        <p class="text-gray-600">Detección automática con YOLOv8</p>
+                    </div>
+                </div>
+                <div class="hidden md:block">
+                    <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">Versión 1.0</span>
+                </div>
+            </div>
         </header>
 
         <!-- Main Content -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Left Column - Form and Upload -->
-            <div class="lg:col-span-1 bg-white rounded-xl shadow-md p-6 h-fit sticky top-4">
-                <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
-                    <i class="fas fa-upload mr-2 text-indigo-600"></i> Cargar Datos
-                </h2>
+        <main>
+            <!-- Upload Section -->
+            <section class="mb-10 bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="bg-blue-600 px-6 py-4">
+                    <h2 class="text-xl font-semibold text-white">Cargar imágenes o video</h2>
+                </div>
+                <div class="p-6">
+                    <div class="grid md:grid-cols-2 gap-8">
+                        <!-- File Upload -->
+                        <div>
+                            <label for="file-upload" class="file-input-label flex flex-col items-center justify-center p-8 rounded-lg cursor-pointer mb-4">
+                                <i class="fas fa-cloud-upload-alt text-4xl text-blue-500 mb-3"></i>
+                                <span class="text-lg font-medium text-gray-700">Arrastra y suelta archivos aquí</span>
+                                <span class="text-sm text-gray-500 mt-1">o haz clic para seleccionar</span>
+                                <input id="file-upload" type="file" class="hidden" accept="image/*,video/*" multiple>
+                            </label>
+                            <div class="text-sm text-gray-500">
+                                <p>Formatos soportados: JPG, PNG, MP4, MOV</p>
+                                <p>Tamaño máximo por archivo: 50MB</p>
+                            </div>
+                        </div>
 
-                <!-- Tabs -->
-                <div class="mb-6">
-                    <div class="flex border-b border-gray-200">
-                        <button class="tab-btn py-2 px-4 font-medium text-indigo-600 border-b-2 border-indigo-600" data-tab="images">
-                            <i class="fas fa-image mr-1"></i> Imágenes
-                        </button>
-                        <button class="tab-btn py-2 px-4 font-medium text-gray-500 hover:text-indigo-600" data-tab="video">
-                            <i class="fas fa-video mr-1"></i> Video
-                        </button>
+                        <!-- Instructions -->
+                        <div class="bg-blue-50 p-5 rounded-lg border border-blue-100">
+                            <h3 class="font-medium text-blue-800 mb-3 flex items-center">
+                                <i class="fas fa-info-circle mr-2"></i> Instrucciones para la captura
+                            </h3>
+                            <ul class="space-y-2 text-sm text-gray-700">
+                                <li class="flex items-start">
+                                    <i class="fas fa-check-circle text-blue-500 mt-1 mr-2"></i>
+                                    <span>Captura imágenes/video desde una altura de 10-15 metros</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-check-circle text-blue-500 mt-1 mr-2"></i>
+                                    <span>Mantén la cámara perpendicular a la superficie</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-check-circle text-blue-500 mt-1 mr-2"></i>
+                                    <span>Evita sombras pronunciadas y reflejos</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-check-circle text-blue-500 mt-1 mr-2"></i>
+                                    <span>Para videos, mantén una velocidad constante</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Selected Files Preview -->
+                    <div id="file-preview-container" class="mt-6 hidden">
+                        <h3 class="font-medium text-gray-700 mb-3">Archivos seleccionados</h3>
+                        <div id="file-preview-list" class="space-y-2"></div>
                     </div>
                 </div>
+            </section>
 
-                <!-- Images Tab Content -->
-                <div id="images-tab" class="tab-content active">
-                    <div id="fileInputLabel" class="file-input-label rounded-lg p-6 text-center cursor-pointer mb-4">
-                        <i class="fas fa-cloud-upload-alt text-4xl text-indigo-500 mb-3"></i>
-                        <p class="text-gray-600 mb-1">Arrastra y suelta imágenes aquí</p>
-                        <p class="text-sm text-gray-500">o haz clic para seleccionar archivos</p>
-                        <input type="file" id="fileInput" class="hidden" accept="image/*" multiple>
-                    </div>
-                    <div class="text-sm text-gray-500 mb-4">
-                        <p>Formatos soportados: JPG, PNG, WEBP</p>
-                        <p>Máximo 10 imágenes simultáneas</p>
-                    </div>
+            <!-- Form Section -->
+            <section class="mb-10 bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="bg-blue-600 px-6 py-4">
+                    <h2 class="text-xl font-semibold text-white">Datos técnicos del tramo carretero</h2>
                 </div>
+                <div class="p-6">
+                    <form id="technical-data-form" class="space-y-6">
+                        <div class="grid form-grid md:grid-cols-2 gap-6">
+                            <!-- Tipo de pavimento -->
+                            <div>
+                                <label for="pavement-type" class="block text-sm font-medium text-gray-700 mb-1">Tipo de pavimento</label>
+                                <select id="pavement-type" name="pavement-type" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="" selected disabled>Seleccione una opción</option>
+                                    <option value="flexible">Flexible (asfáltico)</option>
+                                    <option value="rigid">Rígido (concreto)</option>
+                                    <option value="composite">Compuesto</option>
+                                    <option value="gravel">Grava</option>
+                                    <option value="earth">Tierra</option>
+                                </select>
+                            </div>
 
-                <!-- Video Tab Content -->
-                <div id="video-tab" class="tab-content">
-                    <div class="file-input-label rounded-lg p-6 text-center cursor-pointer mb-4">
-                        <i class="fas fa-video text-4xl text-indigo-500 mb-3"></i>
-                        <p class="text-gray-600 mb-1">Arrastra y suelta video aquí</p>
-                        <p class="text-sm text-gray-500">o haz clic para seleccionar archivo</p>
-                        <input type="file" id="videoInput" class="hidden" accept="video/*">
-                    </div>
-                    <div class="text-sm text-gray-500 mb-4">
-                        <p>Formatos soportados: MP4, MOV, AVI</p>
-                        <p>Duración máxima: 5 minutos</p>
-                    </div>
+                            <!-- Tipo de carretera -->
+                            <div>
+                                <label for="road-type" class="block text-sm font-medium text-gray-700 mb-1">Tipo de carretera</label>
+                                <select id="road-type" name="road-type" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="" selected disabled>Seleccione una opción</option>
+                                    <option value="federal">Federal</option>
+                                    <option value="estatal">Estatal</option>
+                                    <option value="municipal">Municipal</option>
+                                    <option value="cuota">Cuota</option>
+                                    <option value="rural">Rural</option>
+                                </select>
+                            </div>
+
+                            <!-- Norma utilizada -->
+                            <div>
+                                <label for="standard" class="block text-sm font-medium text-gray-700 mb-1">Norma utilizada</label>
+                                <select id="standard" name="standard" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="" selected disabled>Seleccione una opción</option>
+                                    <option value="sct">SCT N-CMT-4-01-002/02</option>
+                                    <option value="astm">ASTM D6433</option>
+                                    <option value="aashto">AASHTO R 36</option>
+                                    <option value="otra">Otra norma</option>
+                                </select>
+                            </div>
+
+                            <!-- Nombre del tramo -->
+                            <div>
+                                <label for="road-section" class="block text-sm font-medium text-gray-700 mb-1">Nombre/ID del tramo</label>
+                                <input type="text" id="road-section" name="road-section" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" placeholder="Ej: TR-045-KM12+500-KM15+800">
+                            </div>
+                        </div>
+
+                        <!-- Additional Notes -->
+                        <div>
+                            <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">Observaciones adicionales</label>
+                            <textarea id="notes" name="notes" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" placeholder="Ingrese cualquier observación relevante sobre el tramo carretero"></textarea>
+                        </div>
+                    </form>
                 </div>
+            </section>
 
-                <!-- Preview of selected files -->
-                <div id="filePreview" class="mb-4 hidden">
-                    <h3 class="font-medium text-gray-700 mb-2">Archivos seleccionados:</h3>
-                    <div id="selectedFilesList" class="text-sm text-gray-600 space-y-1"></div>
-                </div>
-
-                <!-- Progress Bar -->
-                <div id="uploadProgressContainer" class="mb-6 hidden">
-                    <div class="flex justify-between text-sm text-gray-600 mb-1">
-                        <span>Progreso de carga</span>
-                        <span id="progressPercentage">0%</span>
-                    </div>
-                    <div class="w-full bg-gray-200 rounded-full">
-                        <div id="uploadProgressBar" class="progress-bar bg-indigo-600 rounded-full" style="width: 0%"></div>
-                    </div>
-                </div>
-
-                <!-- Technical Data Form -->
-                <h2 class="text-xl font-semibold text-gray-800 mt-8 mb-4 flex items-center">
-                    <i class="fas fa-clipboard-list mr-2 text-indigo-600"></i> Datos Técnicos
-                </h2>
-                <form id="technicalForm" class="space-y-4">
-                    <div>
-                        <label for="pavementType" class="block text-sm font-medium text-gray-700 mb-1">Tipo de pavimento</label>
-                        <select id="pavementType" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                            <option value="">Seleccionar...</option>
-                            <option value="asfalto">Asfalto</option>
-                            <option value="concreto">Concreto</option>
-                            <option value="adoquin">Adoquín</option>
-                            <option value="empedrado">Empedrado</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="roadType" class="block text-sm font-medium text-gray-700 mb-1">Tipo de carretera</label>
-                        <select id="roadType" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                            <option value="">Seleccionar...</option>
-                            <option value="federal">Federal</option>
-                            <option value="estatal">Estatal</option>
-                            <option value="municipal">Municipal</option>
-                            <option value="privada">Privada</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="regulation" class="block text-sm font-medium text-gray-700 mb-1">Normativa aplicable</label>
-                        <select id="regulation" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                            <option value="">Seleccionar...</option>
-                            <option value="sct">SCT - Secretaría de Comunicaciones y Transportes</option>
-                            <option value="astm">ASTM International</option>
-                            <option value="aashto">AASHTO</option>
-                            <option value="local">Normativa local</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="roadSection" class="block text-sm font-medium text-gray-700 mb-1">Nombre/ID del tramo</label>
-                        <input type="text" id="roadSection" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                    </div>
-                </form>
-
-                <!-- Process Button -->
-                <button id="processBtn" class="w-full mt-6 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md shadow-md transition duration-300 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                    <i class="fas fa-play-circle mr-2"></i> Procesar Archivos
+            <!-- Process Button -->
+            <div class="flex justify-center mb-10">
+                <button id="process-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-8 rounded-lg shadow-md transition duration-300 flex items-center">
+                    <i class="fas fa-play-circle mr-2"></i> Procesar imágenes/video
                 </button>
             </div>
 
-            <!-- Right Column - Results -->
-            <div class="lg:col-span-2 space-y-6">
-                <!-- Detection Results Section -->
-                <div id="resultsSection" class="hidden bg-white rounded-xl shadow-md p-6">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-xl font-semibold text-gray-800 flex items-center">
-                            <i class="fas fa-search mr-2 text-indigo-600"></i> Resultados de Detección
-                        </h2>
-                        <button id="generatePdfBtn" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md flex items-center">
-                            <i class="fas fa-file-pdf mr-2"></i> Generar PDF
-                        </button>
-                    </div>
-
-                    <!-- Summary Cards -->
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                        <div class="bg-indigo-50 rounded-lg p-4 text-center">
-                            <p class="text-sm text-indigo-700 font-medium">Total de baches</p>
-                            <p id="totalPotholes" class="text-2xl font-bold text-indigo-800">0</p>
-                        </div>
-                        <div class="bg-green-50 rounded-lg p-4 text-center">
-                            <p class="text-sm text-green-700 font-medium">Pequeños</p>
-                            <p id="smallPotholes" class="text-2xl font-bold text-green-800">0</p>
-                        </div>
-                        <div class="bg-yellow-50 rounded-lg p-4 text-center">
-                            <p class="text-sm text-yellow-700 font-medium">Medianos</p>
-                            <p id="mediumPotholes" class="text-2xl font-bold text-yellow-800">0</p>
-                        </div>
-                        <div class="bg-red-50 rounded-lg p-4 text-center">
-                            <p class="text-sm text-red-700 font-medium">Grandes</p>
-                            <p id="largePotholes" class="text-2xl font-bold text-red-800">0</p>
-                        </div>
-                    </div>
-
-                    <!-- Processed Images -->
-                    <div id="processedImages" class="space-y-6">
-                        <!-- Images will be added here dynamically -->
-                    </div>
+            <!-- Processing Status -->
+            <div id="processing-status" class="hidden mb-10 bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="bg-blue-600 px-6 py-4">
+                    <h2 class="text-xl font-semibold text-white">Procesando archivos</h2>
                 </div>
-
-                <!-- Materials Calculation Section -->
-                <div id="materialsSection" class="hidden bg-white rounded-xl shadow-md p-6">
-                    <h2 class="text-xl font-semibold text-gray-800 mb-6 flex items-center">
-                        <i class="fas fa-calculator mr-2 text-indigo-600"></i> Cálculo de Materiales
-                    </h2>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <!-- Volume Calculation -->
-                        <div class="bg-gray-50 rounded-lg p-4">
-                            <h3 class="font-medium text-gray-700 mb-3">Volumen estimado por tipo</h3>
-                            <div class="space-y-3">
-                                <div class="flex justify-between text-sm">
-                                    <span class="text-green-700">Pequeños (5cm prof.)</span>
-                                    <span id="smallVolume" class="font-medium">0 m³</span>
-                                </div>
-                                <div class="flex justify-between text-sm">
-                                    <span class="text-yellow-700">Medianos (8cm prof.)</span>
-                                    <span id="mediumVolume" class="font-medium">0 m³</span>
-                                </div>
-                                <div class="flex justify-between text-sm">
-                                    <span class="text-red-700">Grandes (12cm prof.)</span>
-                                    <span id="largeVolume" class="font-medium">0 m³</span>
-                                </div>
-                                <div class="border-t border-gray-200 my-2"></div>
-                                <div class="flex justify-between text-sm font-medium">
-                                    <span>Volumen total</span>
-                                    <span id="totalVolume">0 m³</span>
-                                </div>
-                            </div>
+                <div class="p-6">
+                    <div class="mb-4">
+                        <div class="flex justify-between mb-1">
+                            <span class="text-sm font-medium text-gray-700">Progreso</span>
+                            <span id="progress-percentage" class="text-sm font-medium text-gray-700">0%</span>
                         </div>
-
-                        <!-- Material Requirements -->
-                        <div class="bg-gray-50 rounded-lg p-4">
-                            <h3 class="font-medium text-gray-700 mb-3">Requerimientos estimados</h3>
-                            <div class="space-y-3">
-                                <div class="flex justify-between text-sm">
-                                    <span>Mezcla asfáltica</span>
-                                    <span id="asphaltMix" class="font-medium">0 ton</span>
-                                </div>
-                                <div class="flex justify-between text-sm">
-                                    <span>Mano de obra</span>
-                                    <span id="labor" class="font-medium">0 hrs</span>
-                                </div>
-                                <div class="flex justify-between text-sm">
-                                    <span>Maquinaria</span>
-                                    <span id="machinery" class="font-medium">0 hrs</span>
-                                </div>
-                            </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                            <div id="progress-bar" class="progress-bar bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
                         </div>
                     </div>
-
-                    <!-- Cost Calculation -->
-                    <div class="bg-indigo-50 rounded-lg p-4 mb-6">
-                        <h3 class="font-medium text-indigo-700 mb-3">Cálculo de costos</h3>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm text-gray-600 mb-1">Precio por tonelada de mezcla ($)</label>
-                                <input type="number" id="asphaltPrice" value="1500" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
-                            </div>
-                            <div>
-                                <label class="block text-sm text-gray-600 mb-1">Costo por hora de mano de obra ($)</label>
-                                <input type="number" id="laborPrice" value="250" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
-                            </div>
-                            <div>
-                                <label class="block text-sm text-gray-600 mb-1">Costo por hora de maquinaria ($)</label>
-                                <input type="number" id="machineryPrice" value="800" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
-                            </div>
-                            <div class="border-t border-indigo-200 my-2"></div>
-                            <div class="flex justify-between font-medium text-indigo-800">
-                                <span>Costo total estimado</span>
-                                <span id="totalCost">$0</span>
-                            </div>
-                        </div>
+                    <div id="processing-details" class="text-sm text-gray-600">
+                        <p>Iniciando procesamiento con modelo YOLOv8...</p>
                     </div>
-
-                    <div class="text-sm text-gray-500">
-                        <p><i class="fas fa-info-circle mr-1 text-indigo-500"></i> Los cálculos se basan en estimaciones estándar y pueden variar según condiciones específicas.</p>
-                    </div>
-                </div>
-
-                <!-- Empty State -->
-                <div id="emptyState" class="bg-white rounded-xl shadow-md p-12 text-center">
-                    <i class="fas fa-road text-5xl text-gray-300 mb-4"></i>
-                    <h3 class="text-xl font-medium text-gray-500 mb-2">No hay datos para mostrar</h3>
-                    <p class="text-gray-400 mb-6">Carga imágenes o video y completa el formulario para comenzar el análisis.</p>
-                    <button id="sampleDataBtn" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md text-sm font-medium">
-                        <i class="fas fa-magic mr-1"></i> Usar datos de ejemplo
-                    </button>
                 </div>
             </div>
-        </div>
+
+            <!-- Results Section -->
+            <div id="results-section" class="hidden mb-10 bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="bg-green-600 px-6 py-4 flex justify-between items-center">
+                    <h2 class="text-xl font-semibold text-white">Resultados de detección</h2>
+                    <button id="generate-pdf-btn" class="bg-white hover:bg-gray-100 text-green-700 font-medium py-2 px-4 rounded-lg shadow-sm transition duration-300 flex items-center">
+                        <i class="fas fa-file-pdf mr-2"></i> Generar PDF
+                    </button>
+                </div>
+                <div class="p-6">
+                    <div class="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
+                        <div class="flex flex-wrap justify-between items-center">
+                            <div class="mb-2 md:mb-0">
+                                <h3 class="font-medium text-green-800">Resumen de detecciones</h3>
+                                <p class="text-sm text-gray-600">Resultados obtenidos con YOLOv8</p>
+                            </div>
+                            <div class="flex space-x-4">
+                                <div class="text-center">
+                                    <span class="block text-2xl font-bold text-green-700" id="total-images">0</span>
+                                    <span class="text-xs text-gray-500">Imágenes procesadas</span>
+                                </div>
+                                <div class="text-center">
+                                    <span class="block text-2xl font-bold text-green-700" id="total-potholes">0</span>
+                                    <span class="text-xs text-gray-500">Baches detectados</span>
+                                </div>
+                                <div class="text-center">
+                                    <span class="block text-2xl font-bold text-green-700" id="avg-potholes">0.0</span>
+                                    <span class="text-xs text-gray-500">Promedio por imagen</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="results-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- Results will be inserted here dynamically -->
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="mt-12 pt-8 border-t border-gray-200">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <p class="text-sm text-gray-500">© 2023 Sistema de Detección de Baches. Todos los derechos reservados.</p>
+                </div>
+                <div class="flex space-x-4">
+                    <a href="#" class="text-gray-500 hover:text-blue-600">
+                        <i class="fab fa-github"></i>
+                    </a>
+                    <a href="#" class="text-gray-500 hover:text-blue-600">
+                        <i class="fab fa-linkedin"></i>
+                    </a>
+                    <a href="#" class="text-gray-500 hover:text-blue-600">
+                        <i class="fas fa-envelope"></i>
+                    </a>
+                </div>
+            </div>
+        </footer>
     </div>
 
     <script>
-        // Tab functionality
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                // Remove active class from all tabs and contents
-                document.querySelectorAll('.tab-btn').forEach(t => {
-                    t.classList.remove('border-indigo-600', 'text-indigo-600');
-                    t.classList.add('text-gray-500');
-                });
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        // Global variables
+        let selectedFiles = [];
+        let processingInterval;
+        let currentProgress = 0;
+        let detectionResults = [];
 
-                // Add active class to clicked tab and corresponding content
-                btn.classList.remove('text-gray-500');
-                btn.classList.add('border-indigo-600', 'text-indigo-600');
-                document.getElementById(`${btn.dataset.tab}-tab`).classList.add('active');
-            });
-        });
+        // DOM Elements
+        const fileUpload = document.getElementById('file-upload');
+        const filePreviewContainer = document.getElementById('file-preview-container');
+        const filePreviewList = document.getElementById('file-preview-list');
+        const processBtn = document.getElementById('process-btn');
+        const processingStatus = document.getElementById('processing-status');
+        const progressBar = document.getElementById('progress-bar');
+        const progressPercentage = document.getElementById('progress-percentage');
+        const processingDetails = document.getElementById('processing-details');
+        const resultsSection = document.getElementById('results-section');
+        const resultsContainer = document.getElementById('results-container');
+        const totalImagesElement = document.getElementById('total-images');
+        const totalPotholesElement = document.getElementById('total-potholes');
+        const avgPotholesElement = document.getElementById('avg-potholes');
+        const generatePdfBtn = document.getElementById('generate-pdf-btn');
+        const fileInputLabel = document.querySelector('.file-input-label');
 
-        // File upload functionality
-        const fileInputLabel = document.getElementById('fileInputLabel');
-        const fileInput = document.getElementById('fileInput');
-        const videoInput = document.getElementById('videoInput');
-        const selectedFilesList = document.getElementById('selectedFilesList');
-        const filePreview = document.getElementById('filePreview');
-        const uploadProgressContainer = document.getElementById('uploadProgressContainer');
-        const uploadProgressBar = document.getElementById('uploadProgressBar');
-        const progressPercentage = document.getElementById('progressPercentage');
-        const processBtn = document.getElementById('processBtn');
-        const emptyState = document.getElementById('emptyState');
-        const resultsSection = document.getElementById('resultsSection');
-        const materialsSection = document.getElementById('materialsSection');
-        const sampleDataBtn = document.getElementById('sampleDataBtn');
-        const generatePdfBtn = document.getElementById('generatePdfBtn');
+        // Event Listeners
+        fileUpload.addEventListener('change', handleFileSelect);
+        processBtn.addEventListener('click', processFiles);
+        generatePdfBtn.addEventListener('click', generatePDF);
 
-        // Drag and drop functionality
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            fileInputLabel.addEventListener(eventName, preventDefaults, false);
-        });
-
-        function preventDefaults(e) {
+        // Drag and drop events
+        fileInputLabel.addEventListener('dragover', (e) => {
             e.preventDefault();
-            e.stopPropagation();
-        }
-
-        ['dragenter', 'dragover'].forEach(eventName => {
-            fileInputLabel.addEventListener(eventName, highlight, false);
+            fileInputLabel.classList.add('dragover');
         });
 
-        ['dragleave', 'drop'].forEach(eventName => {
-            fileInputLabel.addEventListener(eventName, unhighlight, false);
+        fileInputLabel.addEventListener('dragleave', () => {
+            fileInputLabel.classList.remove('dragover');
         });
 
-        function highlight() {
-            fileInputLabel.classList.add('drag-over');
+        fileInputLabel.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileInputLabel.classList.remove('dragover');
+            fileUpload.files = e.dataTransfer.files;
+            handleFileSelect({ target: fileUpload });
+        });
+
+        // Functions
+        function handleFileSelect(event) {
+            selectedFiles = Array.from(event.target.files);
+            updateFilePreview();
         }
 
-        function unhighlight() {
-            fileInputLabel.classList.remove('drag-over');
-        }
-
-        fileInputLabel.addEventListener('drop', handleDrop, false);
-        fileInput.addEventListener('change', handleFiles);
-
-        function handleDrop(e) {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-            handleFiles({target: {files}});
-        }
-
-        function handleFiles(e) {
-            const files = e.target.files;
-            if (files.length > 0) {
-                displaySelectedFiles(files);
-                simulateUpload();
+        function updateFilePreview() {
+            if (selectedFiles.length === 0) {
+                filePreviewContainer.classList.add('hidden');
+                return;
             }
-        }
 
-        function displaySelectedFiles(files) {
-            selectedFilesList.innerHTML = '';
-            const fileList = document.createElement('div');
-
-            for (let i = 0; i < Math.min(files.length, 10); i++) {
+            filePreviewList.innerHTML = '';
+            selectedFiles.forEach((file, index) => {
                 const fileItem = document.createElement('div');
-                fileItem.className = 'flex items-center py-1';
+                fileItem.className = 'flex items-center justify-between bg-gray-50 p-3 rounded-lg';
 
-                const icon = document.createElement('i');
-                icon.className = files[i].type.startsWith('image/') ? 'fas fa-image mr-2 text-indigo-500' : 'fas fa-file mr-2 text-gray-500';
+                const fileInfo = document.createElement('div');
+                fileInfo.className = 'flex items-center';
+
+                const fileIcon = document.createElement('i');
+                fileIcon.className = file.type.includes('image') ? 'fas fa-image text-blue-500 mr-3' : 'fas fa-video text-blue-500 mr-3';
 
                 const fileName = document.createElement('span');
-                fileName.textContent = files[i].name;
-                fileName.className = 'truncate flex-1';
+                fileName.className = 'text-sm font-medium text-gray-700 truncate max-w-xs';
+                fileName.textContent = file.name;
 
-                fileItem.appendChild(icon);
-                fileItem.appendChild(fileName);
-                fileList.appendChild(fileItem);
-            }
+                const fileSize = document.createElement('span');
+                fileSize.className = 'text-xs text-gray-500 ml-2';
+                fileSize.textContent = formatFileSize(file.size);
 
-            selectedFilesList.appendChild(fileList);
-            filePreview.classList.remove('hidden');
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'text-red-500 hover:text-red-700';
+                removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+                removeBtn.addEventListener('click', () => removeFile(index));
 
-            // Enable process button if form is complete
-            checkFormCompletion();
-        }
-
-        function simulateUpload() {
-            uploadProgressContainer.classList.remove('hidden');
-            let progress = 0;
-            const interval = setInterval(() => {
-                progress += Math.random() * 10;
-                if (progress >= 100) {
-                    progress = 100;
-                    clearInterval(interval);
-                }
-                uploadProgressBar.style.width = `${progress}%`;
-                progressPercentage.textContent = `${Math.round(progress)}%`;
-            }, 200);
-        }
-
-        // Form validation
-        const formInputs = document.querySelectorAll('#technicalForm input, #technicalForm select');
-        formInputs.forEach(input => {
-            input.addEventListener('change', checkFormCompletion);
-        });
-
-        function checkFormCompletion() {
-            let formComplete = true;
-            formInputs.forEach(input => {
-                if (!input.value) formComplete = false;
+                fileInfo.appendChild(fileIcon);
+                fileInfo.appendChild(fileName);
+                fileInfo.appendChild(fileSize);
+                fileItem.appendChild(fileInfo);
+                fileItem.appendChild(removeBtn);
+                filePreviewList.appendChild(fileItem);
             });
 
-            // Also need files to be selected
-            const filesSelected = document.querySelectorAll('#selectedFilesList div').length > 0;
-
-            processBtn.disabled = !(formComplete && filesSelected);
+            filePreviewContainer.classList.remove('hidden');
         }
 
-        // Process button click
-        processBtn.addEventListener('click', () => {
-            processBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Procesando...';
-            processBtn.disabled = true;
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            updateFilePreview();
 
-            // Simulate processing delay
-            setTimeout(() => {
-                showResults();
-                processBtn.innerHTML = '<i class="fas fa-check-circle mr-2"></i> Proceso completado';
-                processBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
-                processBtn.classList.add('bg-green-600', 'hover:bg-green-700');
-            }, 3000);
-        });
+            // Update the file input to reflect the changes
+            const dataTransfer = new DataTransfer();
+            selectedFiles.forEach(file => dataTransfer.items.add(file));
+            fileUpload.files = dataTransfer.files;
 
-        // Show results with sample data
-        function showResults() {
-            emptyState.classList.add('hidden');
-            resultsSection.classList.remove('hidden');
-            materialsSection.classList.remove('hidden');
+            if (selectedFiles.length === 0) {
+                filePreviewContainer.classList.add('hidden');
+            }
+        }
 
-            // Update summary cards
-            document.getElementById('totalPotholes').textContent = '23';
-            document.getElementById('smallPotholes').textContent = '11';
-            document.getElementById('mediumPotholes').textContent = '8';
-            document.getElementById('largePotholes').textContent = '4';
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
 
-            // Add sample processed images
-            const processedImages = document.getElementById('processedImages');
-            processedImages.innerHTML = '';
+        function processFiles() {
+            // Validate form
+            const form = document.getElementById('technical-data-form');
+            const formData = new FormData(form);
+            let isValid = true;
 
-            // Add 3 sample images with detections
-            for (let i = 1; i <= 3; i++) {
-                const imageCard = document.createElement('div');
-                imageCard.className = 'result-card bg-white border border-gray-200 rounded-lg overflow-hidden';
-
-                const imageHeader = document.createElement('div');
-                imageHeader.className = 'bg-gray-50 px-4 py-3 border-b border-gray-200 flex justify-between items-center';
-
-                const imageTitle = document.createElement('h3');
-                imageTitle.className = 'font-medium text-gray-700';
-                imageTitle.textContent = `Imagen ${i}`;
-
-                const imageCount = document.createElement('span');
-                imageCount.className = 'bg-indigo-100 text-indigo-800 text-xs font-medium px-2.5 py-0.5 rounded';
-                imageCount.textContent = i === 1 ? '5 baches' : i === 2 ? '9 baches' : '9 baches';
-
-                imageHeader.appendChild(imageTitle);
-                imageHeader.appendChild(imageCount);
-
-                const imageContainer = document.createElement('div');
-                imageContainer.className = 'p-4 flex justify-center';
-
-                const img = document.createElement('img');
-                img.src = `https://source.unsplash.com/random/600x300/?road,damage&${i}`;
-                img.alt = `Processed image ${i}`;
-                img.className = 'rounded-md max-h-64';
-
-                // Add bounding boxes (simulated detections)
-                if (i === 1) {
-                    img.style.position = 'relative';
-
-                    // Add bounding boxes
-                    addBoundingBox(img, 50, 100, 80, 60, 'small');
-                    addBoundingBox(img, 200, 80, 100, 70, 'medium');
-                    addBoundingBox(img, 350, 120, 120, 90, 'large');
-                    addBoundingBox(img, 150, 200, 70, 50, 'small');
-                    addBoundingBox(img, 400, 180, 90, 65, 'medium');
-                } else if (i === 2) {
-                    img.style.position = 'relative';
-
-                    // Add bounding boxes
-                    addBoundingBox(img, 30, 50, 60, 40, 'small');
-                    addBoundingBox(img, 120, 70, 70, 50, 'small');
-                    addBoundingBox(img, 220, 100, 110, 80, 'medium');
-                    addBoundingBox(img, 350, 60, 130, 100, 'large');
-                    addBoundingBox(img, 100, 180, 80, 60, 'small');
-                    addBoundingBox(img, 200, 200, 90, 70, 'medium');
-                    addBoundingBox(img, 300, 150, 100, 80, 'medium');
-                    addBoundingBox(img, 450, 200, 70, 50, 'small');
-                    addBoundingBox(img, 500, 100, 120, 90, 'large');
-                } else {
-                    img.style.position = 'relative';
-
-                    // Add bounding boxes
-                    addBoundingBox(img, 50, 80, 70, 50, 'small');
-                    addBoundingBox(img, 150, 100, 90, 70, 'medium');
-                    addBoundingBox(img, 280, 70, 120, 90, 'large');
-                    addBoundingBox(img, 420, 120, 80, 60, 'small');
-                    addBoundingBox(img, 100, 200, 100, 80, 'medium');
-                    addBoundingBox(img, 250, 180, 70, 50, 'small');
-                    addBoundingBox(img, 350, 200, 110, 90, 'medium');
-                    addBoundingBox(img, 450, 150, 130, 100, 'large');
-                    addBoundingBox(img, 500, 80, 60, 40, 'small');
+            for (const [key, value] of formData.entries()) {
+                if (key !== 'notes' && !value) {
+                    isValid = false;
+                    const input = document.querySelector(`[name="${key}"]`);
+                    input.classList.add('border-red-500');
+                    input.addEventListener('input', function() {
+                        this.classList.remove('border-red-500');
+                    });
                 }
-
-                imageContainer.appendChild(img);
-                imageCard.appendChild(imageHeader);
-                imageCard.appendChild(imageContainer);
-                processedImages.appendChild(imageCard);
             }
 
-            // Update materials calculation
-            updateMaterialsCalculation();
-        }
-
-        function addBoundingBox(img, x, y, width, height, size) {
-            const box = document.createElement('div');
-            box.style.position = 'absolute';
-            box.style.left = `${x}px`;
-            box.style.top = `${y}px`;
-            box.style.width = `${width}px`;
-            box.style.height = `${height}px`;
-            box.style.border = '2px solid';
-
-            if (size === 'small') {
-                box.classList.add('pothole-small');
-            } else if (size === 'medium') {
-                box.classList.add('pothole-medium');
-            } else {
-                box.classList.add('pothole-large');
+            if (!isValid) {
+                alert('Por favor complete todos los campos obligatorios del formulario.');
+                return;
             }
 
-            img.parentNode.insertBefore(box, img.nextSibling);
+            if (selectedFiles.length === 0) {
+                alert('Por favor seleccione al menos un archivo para procesar.');
+                return;
+            }
+
+            // Show processing status
+            processingStatus.classList.remove('hidden');
+            processBtn.disabled = true;
+            processBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            // Simulate processing (in a real app, this would be an API call)
+            currentProgress = 0;
+            updateProgress(5);
+
+            processingInterval = setInterval(() => {
+                if (currentProgress < 100) {
+                    const increment = Math.random() * 10 + 5;
+                    updateProgress(Math.min(currentProgress + increment, 100));
+
+                    // Update processing details
+                    if (currentProgress < 30) {
+                        processingDetails.innerHTML = 'Preparando archivos para procesamiento...';
+                    } else if (currentProgress < 60) {
+                        processingDetails.innerHTML = 'Cargando modelo YOLOv8 para detección de baches...';
+                    } else if (currentProgress < 90) {
+                        processingDetails.innerHTML = 'Analizando imágenes/video para detectar baches...';
+                    } else {
+                        processingDetails.innerHTML = 'Finalizando procesamiento y generando resultados...';
+                    }
+                } else {
+                    clearInterval(processingInterval);
+                    setTimeout(showResults, 1000);
+                }
+            }, 800);
         }
 
-        // Sample data button
-        sampleDataBtn.addEventListener('click', () => {
-            // Fill form with sample data
-            document.getElementById('pavementType').value = 'asfalto';
-            document.getElementById('roadType').value = 'federal';
-            document.getElementById('regulation').value = 'sct';
-            document.getElementById('roadSection').value = 'Tramo 5 - Carretera Federal 150';
-
-            // Simulate file selection
-            const files = [
-                {name: 'carretera_1.jpg', type: 'image/jpeg'},
-                {name: 'carretera_2.jpg', type: 'image/jpeg'},
-                {name: 'carretera_3.jpg', type: 'image/jpeg'}
-            ];
-
-            displaySelectedFiles(files);
-            simulateUpload();
-            checkFormCompletion();
-        });
-
-        // Materials calculation
-        function updateMaterialsCalculation() {
-            // Get values from the form
-            const smallCount = 11;
-            const mediumCount = 8;
-            const largeCount = 4;
-
-            // Calculate volumes (area * depth)
-            // Assuming average area for each size
-            const smallVolume = (smallCount * 0.3 * 0.3 * 0.05).toFixed(2); // 30x30cm, 5cm deep
-            const mediumVolume = (mediumCount * 0.5 * 0.5 * 0.08).toFixed(2); // 50x50cm, 8cm deep
-            const largeVolume = (largeCount * 0.8 * 0.8 * 0.12).toFixed(2); // 80x80cm, 12cm deep
-            const totalVolume = (parseFloat(smallVolume) + parseFloat(mediumVolume) + parseFloat(largeVolume)).toFixed(2);
-
-            // Update volume display
-            document.getElementById('smallVolume').textContent = `${smallVolume} m³`;
-            document.getElementById('mediumVolume').textContent = `${mediumVolume} m³`;
-            document.getElementById('largeVolume').textContent = `${largeVolume} m³`;
-            document.getElementById('totalVolume').textContent = `${totalVolume} m³`;
-
-            // Calculate material requirements
-            const asphaltMix = (totalVolume * 2.4).toFixed(1); // 2.4 ton/m³ density
-            const laborHours = (smallCount * 0.5 + mediumCount * 1 + largeCount * 1.5).toFixed(1);
-            const machineryHours = (smallCount * 0.2 + mediumCount * 0.5 + largeCount * 1).toFixed(1);
-
-            document.getElementById('asphaltMix').textContent = `${asphaltMix} ton`;
-            document.getElementById('labor').textContent = `${laborHours} hrs`;
-            document.getElementById('machinery').textContent = `${machineryHours} hrs`;
-
-            // Update cost calculation
-            calculateCosts();
+        function updateProgress(progress) {
+            currentProgress = progress;
+            progressBar.style.width = `${progress}%`;
+            progressPercentage.textContent = `${progress}%`;
         }
 
-        // Cost calculation
-        function calculateCosts() {
-            const asphaltPrice = parseFloat(document.getElementById('asphaltPrice').value) || 0;
-            const laborPrice = parseFloat(document.getElementById('laborPrice').value) || 0;
-            const machineryPrice = parseFloat(document.getElementById('machineryPrice').value) || 0;
+        function showResults() {
+            processingStatus.classList.add('hidden');
+            resultsSection.classList.remove('hidden');
 
-            const asphaltMix = parseFloat(document.getElementById('asphaltMix').textContent) || 0;
-            const laborHours = parseFloat(document.getElementById('labor').textContent) || 0;
-            const machineryHours = parseFloat(document.getElementById('machinery').textContent) || 0;
+            // Clear previous results
+            resultsContainer.innerHTML = '';
 
-            const totalCost = (asphaltMix * asphaltPrice + laborHours * laborPrice + machineryHours * machineryPrice).toFixed(2);
+            // Generate mock results (in a real app, these would come from the API)
+            detectionResults = [];
+            let totalPotholes = 0;
 
-            document.getElementById('totalCost').textContent = `$${totalCost}`;
+            selectedFiles.forEach((file, index) => {
+                if (file.type.includes('image')) {
+                    // For images
+                    const potholesCount = Math.floor(Math.random() * 10) + 1;
+                    totalPotholes += potholesCount;
+
+                    const result = {
+                        type: 'image',
+                        name: file.name,
+                        potholes: potholesCount,
+                        detections: generateMockDetections(potholesCount)
+                    };
+
+                    detectionResults.push(result);
+
+                    // Create result card
+                    const resultCard = createImageResultCard(result, index);
+                    resultsContainer.appendChild(resultCard);
+                } else if (file.type.includes('video')) {
+                    // For videos (simplified for this demo)
+                    const framesCount = 5; // We'll process 5 frames from the video
+                    let videoPotholes = 0;
+                    const videoDetections = [];
+
+                    for (let i = 0; i < framesCount; i++) {
+                        const framePotholes = Math.floor(Math.random() * 3) + 1;
+                        videoPotholes += framePotholes;
+                        videoDetections.push({
+                            frame: i + 1,
+                            potholes: framePotholes,
+                            detections: generateMockDetections(framePotholes)
+                        });
+                    }
+
+                    totalPotholes += videoPotholes;
+
+                    const result = {
+                        type: 'video',
+                        name: file.name,
+                        potholes: videoPotholes,
+                        frames: framesCount,
+                        detections: videoDetections
+                    };
+
+                    detectionResults.push(result);
+
+                    // Create result card for video
+                    const resultCard = createVideoResultCard(result, index);
+                    resultsContainer.appendChild(resultCard);
+                }
+            });
+
+            // Update summary
+            totalImagesElement.textContent = detectionResults.length;
+            totalPotholesElement.textContent = totalPotholes;
+            avgPotholesElement.textContent = (totalPotholes / detectionResults.length).toFixed(1);
         }
 
-        // Event listeners for price inputs
-        document.getElementById('asphaltPrice').addEventListener('input', calculateCosts);
-        document.getElementById('laborPrice').addEventListener('input', calculateCosts);
-        document.getElementById('machineryPrice').addEventListener('input', calculateCosts);
+        function generateMockDetections(count) {
+            const detections = [];
+            for (let i = 0; i < count; i++) {
+                detections.push({
+                    x: Math.random() * 80 + 10, // x position (10-90%)
+                    y: Math.random() * 80 + 10, // y position (10-90%)
+                    width: Math.random() * 15 + 5, // width (5-20%)
+                    height: Math.random() * 15 + 5, // height (5-20%)
+                    confidence: (Math.random() * 0.5 + 0.5).toFixed(2) // confidence (0.5-1.0)
+                });
+            }
+            return detections;
+        }
 
-        // Generate PDF
-        generatePdfBtn.addEventListener('click', async () => {
-            generatePdfBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Generando PDF...';
+        function createImageResultCard(result, index) {
+            const card = document.createElement('div');
+            card.className = 'bg-white rounded-lg shadow-md overflow-hidden border border-gray-200';
 
-            // Simulate PDF generation
-            setTimeout(() => {
-                generatePdfBtn.innerHTML = '<i class="fas fa-check-circle mr-2"></i> PDF generado';
-                alert('PDF generado con éxito. En una implementación real, se descargaría el documento.');
+            const cardHeader = document.createElement('div');
+            cardHeader.className = 'bg-gray-50 px-4 py-3 border-b border-gray-200';
+            cardHeader.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <span class="text-sm font-medium text-gray-700 truncate">${result.name}</span>
+                    <span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full">${result.potholes} baches</span>
+                </div>
+            `;
 
-                // Reset button after 3 seconds
-                setTimeout(() => {
-                    generatePdfBtn.innerHTML = '<i class="fas fa-file-pdf mr-2"></i> Generar PDF';
-                }, 3000);
-            }, 2000);
-        });
+            const cardBody = document.createElement('div');
+            cardBody.className = 'p-4';
 
-        // In a real implementation, you would use jsPDF and html2canvas to generate the PDF
-        // Here's a placeholder for that functionality:
-        /*
-        async function generatePDF() {
+            // Create image container with detections
+            const imageContainer = document.createElement('div');
+            imageContainer.className = 'image-container mb-3';
+
+            // For demo purposes, we'll use a placeholder image
+            const img = document.createElement('img');
+            img.src = 'https://via.placeholder.com/400x300/cccccc/969696?text=Carretera';
+            img.alt = 'Imagen procesada';
+            img.className = 'w-full h-auto rounded';
+            img.style.maxHeight = '250px';
+            img.style.objectFit = 'cover';
+
+            imageContainer.appendChild(img);
+
+            // Add detection boxes
+            result.detections.forEach(detection => {
+                const box = document.createElement('div');
+                box.className = 'detection-box';
+                box.style.left = `${detection.x}%`;
+                box.style.top = `${detection.y}%`;
+                box.style.width = `${detection.width}%`;
+                box.style.height = `${detection.height}%`;
+
+                const label = document.createElement('div');
+                label.className = 'detection-label';
+                label.textContent = `${(detection.confidence * 100).toFixed(0)}%`;
+
+                box.appendChild(label);
+                imageContainer.appendChild(box);
+            });
+
+            cardBody.appendChild(imageContainer);
+
+            // Add details
+            const details = document.createElement('div');
+            details.className = 'text-sm text-gray-600';
+            details.innerHTML = `
+                <p class="mb-1"><span class="font-medium">Confianza promedio:</span> ${calculateAverageConfidence(result.detections)}%</p>
+                <p><span class="font-medium">Tamaño promedio:</span> ${calculateAverageSize(result.detections)}</p>
+            `;
+            cardBody.appendChild(details);
+
+            card.appendChild(cardHeader);
+            card.appendChild(cardBody);
+
+            return card;
+        }
+
+        function createVideoResultCard(result, index) {
+            const card = document.createElement('div');
+            card.className = 'bg-white rounded-lg shadow-md overflow-hidden border border-gray-200';
+
+            const cardHeader = document.createElement('div');
+            cardHeader.className = 'bg-gray-50 px-4 py-3 border-b border-gray-200';
+            cardHeader.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <span class="text-sm font-medium text-gray-700 truncate">${result.name}</span>
+                    <span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full">${result.potholes} baches en ${result.frames} frames</span>
+                </div>
+            `;
+
+            const cardBody = document.createElement('div');
+            cardBody.className = 'p-4';
+
+            // Create sample frame from video
+            const sampleFrame = document.createElement('div');
+            sampleFrame.className = 'mb-3';
+
+            // For demo purposes, we'll use a placeholder image
+            const img = document.createElement('img');
+            img.src = 'https://via.placeholder.com/400x150/cccccc/969696?text=Frame+de+video';
+            img.alt = 'Frame de video procesado';
+            img.className = 'w-full h-auto rounded';
+            img.style.maxHeight = '150px';
+            img.style.objectFit = 'cover';
+
+            sampleFrame.appendChild(img);
+            cardBody.appendChild(sampleFrame);
+
+            // Add detections summary
+            const summary = document.createElement('div');
+            summary.className = 'text-sm text-gray-600 mb-3';
+            summary.innerHTML = `
+                <p class="mb-1"><span class="font-medium">Baches por frame:</span> ${(result.potholes / result.frames).toFixed(1)} (promedio)</p>
+                <p><span class="font-medium">Confianza promedio:</span> ${calculateVideoAverageConfidence(result.detections)}%</p>
+            `;
+            cardBody.appendChild(summary);
+
+            // Add frames button
+            const framesBtn = document.createElement('button');
+            framesBtn.className = 'w-full bg-blue-50 hover:bg-blue-100 text-blue-600 text-sm font-medium py-2 px-4 rounded transition duration-200';
+            framesBtn.innerHTML = '<i class="fas fa-images mr-2"></i> Ver frames procesados';
+            framesBtn.addEventListener('click', () => showVideoFrames(result, index));
+            cardBody.appendChild(framesBtn);
+
+            card.appendChild(cardHeader);
+            card.appendChild(cardBody);
+
+            return card;
+        }
+
+        function showVideoFrames(videoResult, index) {
+            // In a real app, this would show a modal with all processed frames
+            alert(`Mostrando ${videoResult.frames} frames procesados del video ${videoResult.name}`);
+        }
+
+        function calculateAverageConfidence(detections) {
+            if (detections.length === 0) return 0;
+            const sum = detections.reduce((acc, det) => acc + parseFloat(det.confidence), 0);
+            return (sum / detections.length * 100).toFixed(1);
+        }
+
+        function calculateVideoAverageConfidence(frameDetections) {
+            let totalConfidence = 0;
+            let totalDetections = 0;
+
+            frameDetections.forEach(frame => {
+                frame.detections.forEach(det => {
+                    totalConfidence += parseFloat(det.confidence);
+                    totalDetections++;
+                });
+            });
+
+            return totalDetections > 0 ? (totalConfidence / totalDetections * 100).toFixed(1) : 0;
+        }
+
+        function calculateAverageSize(detections) {
+            if (detections.length === 0) return '0%';
+            const avgWidth = detections.reduce((acc, det) => acc + det.width, 0) / detections.length;
+            const avgHeight = detections.reduce((acc, det) => acc + det.height, 0) / detections.length;
+            return `${avgWidth.toFixed(1)}% × ${avgHeight.toFixed(1)}%`;
+        }
+
+        function generatePDF() {
+            // In a real app, this would generate a proper PDF with all results
+            alert('Generando PDF con los resultados...\n\nEste PDF incluirá:\n- Imágenes procesadas con detecciones\n- Conteo de baches por imagen y total\n- Datos técnicos del formulario');
+
+            // This is a simplified version using jsPDF
             const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF();
+            const doc = new jsPDF();
 
             // Add title
-            pdf.setFontSize(20);
-            pdf.text('Reporte de Detección de Baches', 105, 20, { align: 'center' });
+            doc.setFontSize(18);
+            doc.setTextColor(40, 53, 147);
+            doc.text('Reporte de Detección de Baches', 105, 20, { align: 'center' });
 
-            // Add technical data
-            pdf.setFontSize(12);
-            pdf.text(`Tipo de pavimento: ${document.getElementById('pavementType').value}`, 20, 40);
-            pdf.text(`Tipo de carretera: ${document.getElementById('roadType').value}`, 20, 50);
-            pdf.text(`Normativa: ${document.getElementById('regulation').value}`, 20, 60);
-            pdf.text(`Tramo carretero: ${document.getElementById('roadSection').value}`, 20, 70);
+            // Add subtitle
+            doc.setFontSize(12);
+            doc.setTextColor(100, 100, 100);
+            doc.text('Generado automáticamente por el sistema YOLOv8', 105, 28, { align: 'center' });
+
+            // Add date
+            doc.setFontSize(10);
+            doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 10, 40);
+
+            // Add form data
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.text('Datos técnicos del tramo:', 10, 50);
+
+            const formData = new FormData(document.getElementById('technical-data-form'));
+            let yPos = 60;
+
+            for (const [key, value] of formData.entries()) {
+                if (value) {
+                    const label = {
+                        'pavement-type': 'Tipo de pavimento',
+                        'road-type': 'Tipo de carretera',
+                        'standard': 'Norma utilizada',
+                        'road-section': 'Nombre/ID del tramo',
+                        'notes': 'Observaciones'
+                    }[key];
+
+                    doc.text(`${label}: ${value}`, 15, yPos);
+                    yPos += 7;
+                }
+            }
 
             // Add summary
-            pdf.text(`Total de baches: ${document.getElementById('totalPotholes').textContent}`, 20, 90);
-            pdf.text(`Pequeños: ${document.getElementById('smallPotholes').textContent}`, 20, 100);
-            pdf.text(`Medianos: ${document.getElementById('mediumPotholes').textContent}`, 20, 110);
-            pdf.text(`Grandes: ${document.getElementById('largePotholes').textContent}`, 20, 120);
+            yPos += 10;
+            doc.setFontSize(14);
+            doc.text('Resumen de detecciones', 105, yPos, { align: 'center' });
+            yPos += 10;
 
-            // Add processed images (would need to capture them with html2canvas)
-            // This is a simplified example - in reality you'd loop through images
+            doc.setFontSize(12);
+            doc.text(`Total de imágenes/videos procesados: ${detectionResults.length}`, 15, yPos);
+            yPos += 7;
 
-            // Add materials calculation
-            pdf.text(`Volumen total: ${document.getElementById('totalVolume').textContent}`, 20, 180);
-            pdf.text(`Mezcla asfáltica: ${document.getElementById('asphaltMix').textContent}`, 20, 190);
-            pdf.text(`Costo total estimado: ${document.getElementById('totalCost').textContent}`, 20, 200);
+            const totalPotholes = detectionResults.reduce((acc, result) => acc + result.potholes, 0);
+            doc.text(`Total de baches detectados: ${totalPotholes}`, 15, yPos);
+            yPos += 7;
 
-            // Save the PD
-            pdf.save('reporte_baches.pdf');
+            doc.text(`Promedio de baches por imagen: ${(totalPotholes / detectionResults.length).toFixed(1)}`, 15, yPos);
+            yPos += 15;
+
+            // For demo purposes, we'll just add one image
+            if (detectionResults.length > 0 && detectionResults[0].type === 'image') {
+                doc.setFontSize(12);
+                doc.text('Ejemplo de imagen procesada:', 15, yPos);
+                yPos += 7;
+
+                // Add a placeholder for the image
+                doc.setDrawColor(200, 200, 200);
+                doc.rect(15, yPos, 180, 100);
+                doc.setTextColor(150, 150, 150);
+                doc.text('(Aquí iría la imagen procesada con detecciones)', 105, yPos + 50, { align: 'center' });
+                yPos += 110;
+            }
+
+            // Add footer
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text('Reporte generado automáticamente por el Sistema de Detección de Baches', 105, 290, { align: 'center' });
+
+            // Save the PDF
+            doc.save('reporte_deteccion_baches.pdf');
         }
-        */
     </script>
 </body>
 </html>
