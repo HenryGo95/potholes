@@ -226,10 +226,6 @@
                         <i class="fas fa-file-pdf mr-2"></i> Generar PDF
                     </button>
                 </div>
-
-
-
-
                 <div class="p-6">
                     <div class="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
                         <div class="flex flex-wrap justify-between items-center">
@@ -254,48 +250,9 @@
                         </div>
                     </div>
 
-
                     <div id="results-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <!-- Results will be inserted here dynamically -->
                     </div>
-
-                     <!-- Restoration Cost Form -->
-<section id="restoration-form-section" class="hidden mb-10 bg-white rounded-xl shadow-md overflow-hidden">
-    <div class="bg-yellow-600 px-6 py-4">
-        <h2 class="text-xl font-semibold text-white">Estimación de insumos para reparación</h2>
-    </div>
-    <div class="p-6">
-        <form id="restoration-form" class="grid md:grid-cols-2 gap-6">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Costo por tonelada de grava (MXN)</label>
-                <input type="number" id="costo-grava" class="w-full px-4 py-2 border rounded-md" required>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Costo por tonelada de chapopote (MXN)</label>
-                <input type="number" id="costo-chapopote" class="w-full px-4 py-2 border rounded-md" required>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Costo por hora de maquinaria (MXN)</label>
-                <input type="number" id="costo-maquinaria" class="w-full px-4 py-2 border rounded-md" required>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Costo por jornada de mano de obra (MXN)</label>
-                <input type="number" id="costo-mano" class="w-full px-4 py-2 border rounded-md" required>
-            </div>
-            <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Otros gastos fijos (MXN)</label>
-                <input type="number" id="otros-gastos" class="w-full px-4 py-2 border rounded-md" value="0">
-            </div>
-            <div class="md:col-span-2 flex justify-center mt-4">
-                <button type="submit" class="bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-2 px-6 rounded-lg shadow-md">
-                    Calcular costos de reparación
-                </button>
-            </div>
-        </form>
-
-        <div id="resultado-costos" class="mt-6 text-sm text-gray-800"></div>
-    </div>
-</section>
                 </div>
             </div>
         </main>
@@ -437,56 +394,62 @@
         }
 
         function processFiles() {
-    // Validar formulario
-    const form = document.getElementById('technical-data-form');
-    const formData = new FormData(form);
-    let isValid = true;
+            // Validate form
+            const form = document.getElementById('technical-data-form');
+            const formData = new FormData(form);
+            let isValid = true;
 
-    for (const [key, value] of formData.entries()) {
-        if (key !== 'notes' && !value) {
-            isValid = false;
-            const input = document.querySelector(`[name="${key}"]`);
-            input.classList.add('border-red-500');
-            input.addEventListener('input', function () {
-                this.classList.remove('border-red-500');
-            });
+            for (const [key, value] of formData.entries()) {
+                if (key !== 'notes' && !value) {
+                    isValid = false;
+                    const input = document.querySelector(`[name="${key}"]`);
+                    input.classList.add('border-red-500');
+                    input.addEventListener('input', function() {
+                        this.classList.remove('border-red-500');
+                    });
+                }
+            }
+
+            if (!isValid) {
+                alert('Por favor complete todos los campos obligatorios del formulario.');
+                return;
+            }
+
+            if (selectedFiles.length === 0) {
+                alert('Por favor seleccione al menos un archivo para procesar.');
+                return;
+            }
+
+            // Show processing status
+            processingStatus.classList.remove('hidden');
+            processBtn.disabled = true;
+            processBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            // Simulate processing (in a real app, this would be an API call)
+            currentProgress = 0;
+            updateProgress(5);
+
+            processingInterval = setInterval(() => {
+                if (currentProgress < 100) {
+                    const increment = Math.random() * 10 + 5;
+                    updateProgress(Math.min(currentProgress + increment, 100));
+
+                    // Update processing details
+                    if (currentProgress < 30) {
+                        processingDetails.innerHTML = 'Preparando archivos para procesamiento...';
+                    } else if (currentProgress < 60) {
+                        processingDetails.innerHTML = 'Cargando modelo YOLOv8 para detección de baches...';
+                    } else if (currentProgress < 90) {
+                        processingDetails.innerHTML = 'Analizando imágenes/video para detectar baches...';
+                    } else {
+                        processingDetails.innerHTML = 'Finalizando procesamiento y generando resultados...';
+                    }
+                } else {
+                    clearInterval(processingInterval);
+                    setTimeout(showResults, 1000);
+                }
+            }, 800);
         }
-    }
-
-    if (!isValid) {
-        alert('Por favor complete todos los campos obligatorios del formulario.');
-        return;
-    }
-
-    if (selectedFiles.length === 0) {
-        alert('Por favor seleccione al menos un archivo para procesar.');
-        return;
-    }
-
-    // Mostrar estado de procesamiento
-    processingStatus.classList.remove('hidden');
-    processBtn.disabled = true;
-    processBtn.classList.add('opacity-50', 'cursor-not-allowed');
-    processingDetails.textContent = 'Enviando archivos al servidor...';
-
-    const uploadData = new FormData();
-    selectedFiles.forEach(file => uploadData.append('files', file));
-
-    fetch('/procesar', {
-        method: 'POST',
-        body: uploadData
-    })
-    .then(response => response.json())
-    .then(data => {
-        detectionResults = data;
-        showResults();
-    })
-    .catch(error => {
-        console.error('Error en procesamiento:', error);
-        alert('Ocurrió un error al procesar los archivos.');
-    });
-}
-
 
         function updateProgress(progress) {
             currentProgress = progress;
@@ -496,99 +459,71 @@
 
         function showResults() {
             processingStatus.classList.add('hidden');
-    resultsSection.classList.remove('hidden');
-    resultsContainer.innerHTML = '';
-    const { p33, p66 } = clasificarBachesPorTamano();
+            resultsSection.classList.remove('hidden');
 
+            // Clear previous results
+            resultsContainer.innerHTML = '';
 
-    let totalPotholes = 0;
+            // Generate mock results (in a real app, these would come from the API)
+            detectionResults = [];
+            let totalPotholes = 0;
 
-    detectionResults.forEach(result => {
-        const potholes = result.detections.length;
-        totalPotholes += potholes;
+            selectedFiles.forEach((file, index) => {
+                if (file.type.includes('image')) {
+                    // For images
+                    const potholesCount = Math.floor(Math.random() * 10) + 1;
+                    totalPotholes += potholesCount;
 
-        const card = document.createElement('div');
-        card.className = 'bg-white rounded-lg shadow-md overflow-hidden border border-gray-200';
+                    const result = {
+                        type: 'image',
+                        name: file.name,
+                        potholes: potholesCount,
+                        detections: generateMockDetections(potholesCount)
+                    };
 
-        const header = document.createElement('div');
-        header.className = 'bg-gray-50 px-4 py-3 border-b border-gray-200';
-        header.innerHTML = `
-            <div class="flex justify-between items-center">
-                <span class="text-sm font-medium text-gray-700 truncate">${result.filename}</span>
-                <span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full">${potholes} baches</span>
-            </div>
-        `;
+                    detectionResults.push(result);
 
-        const body = document.createElement('div');
-        body.className = 'p-4';
+                    // Create result card
+                    const resultCard = createImageResultCard(result, index);
+                    resultsContainer.appendChild(resultCard);
+                } else if (file.type.includes('video')) {
+                    // For videos (simplified for this demo)
+                    const framesCount = 5; // We'll process 5 frames from the video
+                    let videoPotholes = 0;
+                    const videoDetections = [];
 
-        const image = document.createElement('img');
-image.src = `/uploads/${result.filename}`;
-image.alt = 'Imagen procesada';
-image.className = 'w-full h-auto rounded';
-image.style.maxHeight = '250px';
+                    for (let i = 0; i < framesCount; i++) {
+                        const framePotholes = Math.floor(Math.random() * 3) + 1;
+                        videoPotholes += framePotholes;
+                        videoDetections.push({
+                            frame: i + 1,
+                            potholes: framePotholes,
+                            detections: generateMockDetections(framePotholes)
+                        });
+                    }
 
-const container = document.createElement('div');
-container.className = 'relative';
-container.style.width = '100%';
-container.appendChild(image);
+                    totalPotholes += videoPotholes;
 
-// Esperar a que la imagen termine de cargarse antes de dibujar cajas
-image.onload = () => {
-    result.detections.forEach(d => {
-        const box = document.createElement('div');
-        box.className = 'detection-box';
-        box.style.position = 'absolute';
-        box.style.left = `${(d.x / image.naturalWidth) * 100}%`;
-        box.style.top = `${(d.y / image.naturalHeight) * 100}%`;
-        box.style.width = `${(d.width / image.naturalWidth) * 100}%`;
-        box.style.height = `${(d.height / image.naturalHeight) * 100}%`;
+                    const result = {
+                        type: 'video',
+                        name: file.name,
+                        potholes: videoPotholes,
+                        frames: framesCount,
+                        detections: videoDetections
+                    };
 
-        const label = document.createElement('div');
-        label.className = 'detection-label';
-        label.textContent = `${(d.confidence * 100).toFixed(1)}% - ${d.size_label}`;
+                    detectionResults.push(result);
 
-        box.appendChild(label);
-        container.appendChild(box);
-    });
-};
+                    // Create result card for video
+                    const resultCard = createVideoResultCard(result, index);
+                    resultsContainer.appendChild(resultCard);
+                }
+            });
 
-
-        body.appendChild(container);
-        card.appendChild(header);
-        card.appendChild(body);
-        resultsContainer.appendChild(card);
-    });
-
-    totalImagesElement.textContent = detectionResults.length;
-    totalPotholesElement.textContent = totalPotholes;
-    avgPotholesElement.textContent = (totalPotholes / detectionResults.length).toFixed(1);
-
-    // Conteo total por tamaño
-let totalSmall = 0, totalMedium = 0, totalLarge = 0;
-
-detectionResults.forEach(r => {
-    totalSmall += r.small;
-    totalMedium += r.medium;
-    totalLarge += r.large;
-});
-
-// Crear tarjeta de resumen
-const summaryDiv = document.createElement('div');
-summaryDiv.className = 'bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4';
-summaryDiv.innerHTML = `
-    <h3 class="font-medium text-yellow-800 mb-2">Clasificación por tamaño de baches</h3>
-    <ul class="text-sm text-gray-800 space-y-1">
-        <li><strong>Pequeños:</strong> ${totalSmall}</li>
-        <li><strong>Medianos:</strong> ${totalMedium}</li>
-        <li><strong>Grandes:</strong> ${totalLarge}</li>
-    </ul>
-`;
-resultsSection.appendChild(summaryDiv);
-
-
-    document.getElementById('restoration-form-section').classList.remove('hidden');
-
+            // Update summary
+            totalImagesElement.textContent = detectionResults.length;
+            totalPotholesElement.textContent = totalPotholes;
+            avgPotholesElement.textContent = (totalPotholes / detectionResults.length).toFixed(1);
         }
 
         function generateMockDetections(count) {
@@ -809,72 +744,12 @@ resultsSection.appendChild(summaryDiv);
             doc.text(`Total de imágenes/videos procesados: ${detectionResults.length}`, 15, yPos);
             yPos += 7;
 
-            const totalPotholes = detectionResults.reduce((acc, result) => acc + result.detections.length, 0);
+            const totalPotholes = detectionResults.reduce((acc, result) => acc + result.potholes, 0);
             doc.text(`Total de baches detectados: ${totalPotholes}`, 15, yPos);
             yPos += 7;
 
             doc.text(`Promedio de baches por imagen: ${(totalPotholes / detectionResults.length).toFixed(1)}`, 15, yPos);
             yPos += 15;
-
-            // Clasificación por tamaño
-let small = 0, medium = 0, large = 0;
-let areas = [];
-
-detectionResults.forEach(result => {
-    result.detections.forEach(d => {
-        areas.push(d.area_cm2);
-        if (d.size_label === "Pequeño") small++;
-        else if (d.size_label === "Mediano") medium++;
-        else if (d.size_label === "Grande") large++;
-    });
-});
-
-areas.sort((a, b) => a - b);
-const p33 = areas[Math.floor(areas.length * 0.33)] || 0;
-const p66 = areas[Math.floor(areas.length * 0.66)] || 0;
-
-doc.setFontSize(12);
-doc.text('Clasificación por tamaño:', 15, yPos); yPos += 7;
-doc.text(`Pequeños: ${small}   |   Medianos: ${medium}   |   Grandes: ${large}`, 15, yPos); yPos += 7;
-doc.text(`Umbral Pequeño < ${p33.toFixed(2)} cm²`, 15, yPos); yPos += 7;
-doc.text(`Umbral Mediano < ${p66.toFixed(2)} cm²`, 15, yPos); yPos += 7;
-doc.text(`Umbral Grande ≥ ${p66.toFixed(2)} cm²`, 15, yPos); yPos += 7;
-doc.text(`Profundidad de excavación considerada: 15 cm`, 15, yPos); yPos += 10;
-
-// Restauración
-let volumenTotalM3 = 0;
-detectionResults.forEach(result => {
-    result.detections.forEach(d => {
-        volumenTotalM3 += d.area_cm2 * 15 / 1000000;
-    });
-});
-const toneladas = volumenTotalM3 * 2.4;
-
-const costoGrava = parseFloat(document.getElementById('costo-grava').value || 0);
-const costoChapo = parseFloat(document.getElementById('costo-chapopote').value || 0);
-const costoMaq = parseFloat(document.getElementById('costo-maquinaria').value || 0);
-const costoMano = parseFloat(document.getElementById('costo-mano').value || 0);
-const otrosGastos = parseFloat(document.getElementById('otros-gastos').value || 0);
-
-const totalGrava = toneladas * costoGrava;
-const totalChapopote = toneladas * costoChapo;
-const totalMaquinaria = costoMaq * (volumenTotalM3 * 2);
-const totalMano = costoMano * (volumenTotalM3 * 1.5);
-const total = totalGrava + totalChapopote + totalMaquinaria + totalMano + otrosGastos;
-
-doc.setFontSize(12);
-doc.text('Resumen de insumos estimados:', 15, yPos); yPos += 7;
-doc.text(`Volumen estimado: ${volumenTotalM3.toFixed(2)} m³`, 15, yPos); yPos += 7;
-doc.text(`Toneladas estimadas: ${toneladas.toFixed(2)} t`, 15, yPos); yPos += 7;
-doc.text(`Costo Grava: $${totalGrava.toFixed(2)} MXN`, 15, yPos); yPos += 7;
-doc.text(`Costo Chapopote: $${totalChapopote.toFixed(2)} MXN`, 15, yPos); yPos += 7;
-doc.text(`Costo Maquinaria: $${totalMaquinaria.toFixed(2)} MXN`, 15, yPos); yPos += 7;
-doc.text(`Costo Mano de obra: $${totalMano.toFixed(2)} MXN`, 15, yPos); yPos += 7;
-doc.text(`Otros gastos: $${otrosGastos.toFixed(2)} MXN`, 15, yPos); yPos += 7;
-
-doc.setFontSize(13);
-doc.text(`Total estimado de restauración: $${total.toFixed(2)} MXN`, 15, yPos); yPos += 15;
-
 
             // For demo purposes, we'll just add one image
             if (detectionResults.length > 0 && detectionResults[0].type === 'image') {
@@ -898,98 +773,6 @@ doc.text(`Total estimado de restauración: $${total.toFixed(2)} MXN`, 15, yPos);
             // Save the PDF
             doc.save('reporte_deteccion_baches.pdf');
         }
-
-        function clasificarBachesPorTamano() {
-    const allAreas = [];
-
-    detectionResults.forEach(result => {
-        const imageWidthPx = result.image_width || 1000; // fallback si no viene del backend
-        const cmPerPixel = 700 / imageWidthPx;
-
-        result.detections.forEach(d => {
-            const areaPx = d.width * d.height;
-            const areaCm2 = (d.width * cmPerPixel) * (d.height * cmPerPixel);
-            d.area_px = areaPx;
-            d.area_cm2 = areaCm2;
-            allAreas.push(areaCm2);
-        });
-    });
-
-    // Calcular umbrales para clasificación
-    const sortedAreas = [...allAreas].sort((a, b) => a - b);
-    const p33 = sortedAreas[Math.floor(sortedAreas.length * 0.33)] || 0;
-    const p66 = sortedAreas[Math.floor(sortedAreas.length * 0.66)] || 0;
-
-    // Clasificar baches
-    detectionResults.forEach(result => {
-        result.small = 0;
-        result.medium = 0;
-        result.large = 0;
-
-        result.detections.forEach(d => {
-            if (d.area_cm2 < p33) {
-                d.size_label = "Pequeño";
-                result.small++;
-            } else if (d.area_cm2 < p66) {
-                d.size_label = "Mediano";
-                result.medium++;
-            } else {
-                d.size_label = "Grande";
-                result.large++;
-            }
-        });
-    });
-
-    return { p33, p66 };
-}
-
-
-document.getElementById('restoration-form').addEventListener('submit', function (e) {
-    e.preventDefault();
-
-    const costoGrava = parseFloat(document.getElementById('costo-grava').value);
-    const costoChapo = parseFloat(document.getElementById('costo-chapopote').value);
-    const costoMaq = parseFloat(document.getElementById('costo-maquinaria').value);
-    const costoMano = parseFloat(document.getElementById('costo-mano').value);
-    const otrosGastos = parseFloat(document.getElementById('otros-gastos').value || 0);
-
-    let volumenTotalM3 = 0;
-
-    detectionResults.forEach(result => {
-        result.detections.forEach(d => {
-            const volumenCm3 = d.area_cm2 * 15; // profundidad fija 15 cm
-            const volumenM3 = volumenCm3 / 1000000; // convertir a m³
-            d.volumen_m3 = volumenM3;
-            volumenTotalM3 += volumenM3;
-        });
-    });
-
-    const toneladas = volumenTotalM3 * 2.4; // densidad estimada mezcla asfáltica en t/m³
-
-    const totalGrava = toneladas * costoGrava;
-    const totalChapopote = toneladas * costoChapo;
-    const totalMaquinaria = costoMaq * (volumenTotalM3 * 2); // 2 horas por m³ estimado
-    const totalMano = costoMano * (volumenTotalM3 * 1.5);     // 1.5 jornadas por m³
-
-    const total = totalGrava + totalChapopote + totalMaquinaria + totalMano + otrosGastos;
-
-    document.getElementById('resultado-costos').innerHTML = `
-        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <h3 class="font-medium text-yellow-800 mb-2">Resumen de costos estimados</h3>
-            <ul class="space-y-1">
-                <li><strong>Volumen estimado:</strong> ${volumenTotalM3.toFixed(2)} m³</li>
-                <li><strong>Toneladas estimadas:</strong> ${toneladas.toFixed(2)} t</li>
-                <li><strong>Grava:</strong> $${totalGrava.toFixed(2)} MXN</li>
-                <li><strong>Chapopote:</strong> $${totalChapopote.toFixed(2)} MXN</li>
-                <li><strong>Maquinaria:</strong> $${totalMaquinaria.toFixed(2)} MXN</li>
-                <li><strong>Mano de obra:</strong> $${totalMano.toFixed(2)} MXN</li>
-                <li><strong>Otros:</strong> $${otrosGastos.toFixed(2)} MXN</li>
-                <li class="text-lg mt-2"><strong>Total estimado:</strong> <span class="text-green-600 font-bold">$${total.toFixed(2)} MXN</span></li>
-            </ul>
-        </div>
-    `;
-});
-
     </script>
 </body>
 </html>
